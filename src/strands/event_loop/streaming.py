@@ -336,5 +336,6 @@ def stream_messages(
     messages = remove_blank_messages_content_text(messages)
     tool_specs = [tool["toolSpec"] for tool in tool_config.get("tools", [])] or None if tool_config else None
 
+    logger.debug(messages)
     chunks = model.converse(messages, tool_specs, system_prompt)
     return process_stream(chunks, callback_handler, messages, **kwargs)

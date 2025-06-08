@@ -195,6 +195,9 @@ class Agent:
         record_direct_tool_call: bool = True,
         load_tools_from_directory: bool = True,
         trace_attributes: Optional[Mapping[str, AttributeValue]] = None,
+        agent_id: Optional[str] = None,
+        name: Optional[str] = None,
+        description: Optional[str] = None,
     ):
         """Initialize the Agent with the specified configuration.
 
@@ -227,6 +230,12 @@ class Agent:
             load_tools_from_directory: Whether to load and automatically reload tools in the `./tools/` directory.
                 Defaults to True.
             trace_attributes: Custom trace attributes to apply to the agent's trace span.
+            agent_id: Optional ID for the agent, useful for multi-agent scenarios.
+                If None, a UUID is generated.
+            name: Optional name for the agent, useful for multi-agent scenarios.
+                If None, no name is assigned.
+            description: Optional description of the agent's role or capabilities.
+                If None, no description is assigned.
 
         Raises:
             ValueError: If max_parallel_tools is less than 1.
@@ -235,6 +244,9 @@ class Agent:
         self.messages = messages if messages is not None else []
 
         self.system_prompt = system_prompt
+        self.agent_id = agent_id or uuid4()
+        self.name = name
+        self.description = description
 
         # If not provided, create a new PrintingCallbackHandler instance
         # If explicitly set to None, use null_callback_handler
