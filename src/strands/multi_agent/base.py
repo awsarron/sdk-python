@@ -9,14 +9,13 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 
-# Import existing Strands types
 from ..agent import Agent
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass
-class AgentResult:
+class MultiAgentResult:
     """Result from agent execution."""
 
     agent_name: str
@@ -76,12 +75,12 @@ class MultiAgentBase(ABC):
         return None
 
     @abstractmethod
-    async def execute(self, task: str) -> List[AgentResult]:
+    async def execute(self, task: str) -> List[MultiAgentResult]:
         """Execute task with multi-agent pattern (implemented by subclasses)."""
         raise NotImplementedError("execute not implemented")
 
     @abstractmethod
-    async def resume_from_user_input(self, user_response: str) -> List[AgentResult]:
+    async def resume_from_user_input(self, user_response: str) -> List[MultiAgentResult]:
         """Resume task with multi-agent pattern after user provides input (implemented by subclasses)."""
         raise NotImplementedError("resume_from_user_input not implemented")
 

@@ -15,7 +15,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 from strands import tool
 
 from ..agent import Agent
-from .base import AgentResult, MultiAgentBase
+from .base import MultiAgentBase, MultiAgentResult
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +110,7 @@ class Swarm(MultiAgentBase):
 
     def __init__(
         self,
-        agents: List[Agent],
+        agents: List[Agent],  # TODO: Support MultiAgentBase (e.g. nested swarms, graph within swarm)
         swarm_config: Optional[SwarmExecutionConfig] = None,
     ):
         """Initialize swarm with agents and configuration.
@@ -124,8 +124,6 @@ class Swarm(MultiAgentBase):
         self.swarm_config = swarm_config or SwarmExecutionConfig()
         self._request_state: Dict[str, Any] = {}  # TODO: better types
         self.shared_context = SharedContext()
-        # Initialize with a dummy state that will be replaced in execute()
-        # This avoids Optional typing issues while maintaining clean initialization
         self.swarm_state: SwarmState = SwarmState(
             current_agent="",
             task="",
@@ -138,7 +136,6 @@ class Swarm(MultiAgentBase):
 
     def _setup_swarm(self) -> None:
         """Initialize swarm configuration."""
-        # After validation in base class, all agents are guaranteed to have names
         agent_names = [str(agent.name) for agent in self.agents]
 
         self.shared_context.set_available_agents(agent_names)
@@ -146,7 +143,6 @@ class Swarm(MultiAgentBase):
 
     def _inject_swarm_tools(self) -> None:
         """Add swarm coordination tools to each agent."""
-        # Create tool functions with proper closures
         swarm_tools = [
             self._create_handoff_tool(),
             self._create_complete_tool(),
@@ -155,7 +151,6 @@ class Swarm(MultiAgentBase):
         ]
 
         for agent in self.agents:
-            # Use the agent's tool registry to process and register the tools
             agent.tool_registry.process_tools(swarm_tools)
 
         logger.info(
@@ -166,7 +161,7 @@ class Swarm(MultiAgentBase):
 
     def _create_handoff_tool(self) -> Callable[..., Any]:  # TODO: better types
         """Create handoff tool using @tool decorator."""
-        swarm_ref = self  # Capture swarm reference
+        swarm_ref = self
 
         # TODO: better types
         @tool
@@ -184,11 +179,9 @@ class Swarm(MultiAgentBase):
             try:
                 context = context or {}
 
-                # Validate target agent exists
                 if not swarm_ref.get_agent(agent_name):
                     return {"status": "error", "content": [{"text": f"Error: Agent '{agent_name}' not found in swarm"}]}
 
-                # Execute handoff
                 swarm_ref._handle_handoff(agent_name, message, context)
 
                 # TODO: Force stop agent event loop
@@ -202,7 +195,7 @@ class Swarm(MultiAgentBase):
 
     def _create_complete_tool(self) -> Callable[..., Any]:  # TODO: better types
         """Create completion tool using @tool decorator."""
-        swarm_ref = self  # Capture swarm reference
+        swarm_ref = self
 
         @tool
         def complete_swarm_task(result: str, summary: Optional[str] = None) -> Dict[str, Any]:  # TODO: better types
@@ -216,7 +209,6 @@ class Swarm(MultiAgentBase):
                 Task completion confirmation
             """
             try:
-                # Mark swarm as complete
                 swarm_ref._handle_completion(result, summary or "")
 
                 # TODO: Force stop agent event loop
@@ -230,7 +222,7 @@ class Swarm(MultiAgentBase):
 
     def _create_context_tool(self) -> Callable[..., Any]:  # TODO: better types
         """Create context tool using @tool decorator."""
-        swarm_ref = self  # Capture swarm reference
+        swarm_ref = self
 
         @tool
         def get_swarm_context() -> Dict[str, Any]:  # TODO: better types
@@ -240,7 +232,6 @@ class Swarm(MultiAgentBase):
                 Current swarm state including shared facts, agent history, etc.
             """
             try:
-                # Get context for current agent
                 current_agent = swarm_ref.swarm_state.current_agent
                 context = swarm_ref.shared_context.get_relevant_context(current_agent)
 
@@ -255,7 +246,7 @@ class Swarm(MultiAgentBase):
 
     def _create_handoff_to_user_tool(self) -> Callable[..., Any]:  # TODO: better types
         """Create handoff to user tool that stops the event loop."""
-        swarm_ref = self  # Capture swarm reference
+        swarm_ref = self
 
         # TODO: better types
         @tool
@@ -278,7 +269,6 @@ class Swarm(MultiAgentBase):
             try:
                 context = context or {}
 
-                # Execute user handoff (saves state)
                 swarm_ref._handle_user_handoff(question, context, options)
 
                 # Stop the event loop to prevent further agent execution
@@ -305,7 +295,6 @@ class Swarm(MultiAgentBase):
     # TODO: better types
     def _handle_handoff(self, target_agent: str, message: str, context: Dict[str, Any]) -> Dict[str, Any]:
         """Handle handoff to another agent."""
-        # If task is already completed, don't allow further handoffs
         if self.swarm_state.completion_status != SwarmStatus.ACTIVE:
             logger.info(
                 "task_status=<%s> | ignoring handoff request - task already completed",
@@ -362,7 +351,6 @@ class Swarm(MultiAgentBase):
         self, question: str, context: Dict[str, Any], options: Optional[List[str]] = None
     ) -> Dict[str, Any]:
         """Handle handoff to user and stop execution."""
-        # Update swarm state to waiting for user
         self.swarm_state.completion_status = SwarmStatus.WAITING_FOR_USER
 
         # Store user handoff info
@@ -390,7 +378,7 @@ class Swarm(MultiAgentBase):
         logger.info("agent=<%s>, question=<%s> | user handoff from agent", self.swarm_state.current_agent, question)
         return {"status": "waiting_for_user", "question": question, "options": options}
 
-    async def _continue_execution(self) -> List[AgentResult]:
+    async def _continue_execution(self) -> List[MultiAgentResult]:
         """Shared execution logic used by both execute() and resume_from_user_input()."""
         results = []
 
@@ -417,7 +405,7 @@ class Swarm(MultiAgentBase):
                     self.swarm_state.iteration_count,
                 )
 
-                # Execute agent with timeout protection
+                # Execute current agent
                 try:
                     result = await asyncio.wait_for(
                         self._execute_agent_with_swarm_tools(current_agent, self.swarm_state.task),
@@ -430,7 +418,6 @@ class Swarm(MultiAgentBase):
 
                     logger.info("status=<%s> | agent execution completed", result.status)
 
-                    # Immediate check for completion after agent execution
                     if self.swarm_state.completion_status != SwarmStatus.ACTIVE:
                         logger.info(
                             "status=<%s> | task completed with status", self.swarm_state.completion_status.value
@@ -468,7 +455,7 @@ class Swarm(MultiAgentBase):
 
         return results
 
-    async def _execute_agent_with_swarm_tools(self, agent: Agent, task: str) -> AgentResult:
+    async def _execute_agent_with_swarm_tools(self, agent: Agent, task: str) -> MultiAgentResult:
         """Execute agent with swarm tools available."""
         start_time = time.time()
         agent_name = getattr(agent, "name", "unknown")
@@ -482,17 +469,17 @@ class Swarm(MultiAgentBase):
             task_with_context = f"Task: {task}\n\n"
             task_with_context += self._format_context(context_info)
 
-            # Agent uses normal Strands execution - tools handle coordination
+            # Execute the Agent - tools handle coordination
             result = agent(task_with_context)
             execution_time = time.time() - start_time
 
-            return AgentResult(
+            return MultiAgentResult(
                 agent_name=agent_name, task_id=task_id, status="success", result=result, execution_time=execution_time
             )
 
         except Exception as e:
             execution_time = time.time() - start_time
-            return AgentResult(
+            return MultiAgentResult(
                 agent_name=agent_name,
                 task_id=task_id,
                 status="error",
@@ -505,29 +492,30 @@ class Swarm(MultiAgentBase):
         """Format task message with relevant context."""
         context_text = ""
 
-        # Include detailed agent history
+        # Include agent history
         if context_info.get("agent_history"):
             context_text += f"Previous agents who worked on this: {' → '.join(context_info['agent_history'])}\n\n"
 
-        # Include actual shared facts, not just a mention
+        # Include shared facts
         shared_facts = context_info.get("shared_facts", {})
         if shared_facts:
-            context_text += "🧠 SHARED KNOWLEDGE FROM PREVIOUS AGENTS:\n"
+            context_text += "Shared knowledge from previous agents:\n"
             for agent_name, facts in shared_facts.items():
-                if facts:  # Only include if agent has contributed facts
+                if facts:
                     context_text += f"• {agent_name}: {facts}\n"
             context_text += "\n"
 
         # Include shared artifacts
         artifacts = context_info.get("shared_artifacts", [])
         if artifacts:
-            context_text += f"📁 Shared artifacts available: {', '.join(artifacts)}\n\n"
+            context_text += f"Shared artifacts from previous agents: {', '.join(artifacts)}\n\n"
 
         # Include available agents
         if context_info.get("available_agents"):
             context_text += (
                 f"Other agents available for collaboration: {', '.join(context_info['available_agents'])}\n\n"
             )
+            # TODO: include agent descriptions
 
         context_text += (
             "You have access to swarm coordination tools if you need help from other agents "
@@ -577,9 +565,8 @@ class Swarm(MultiAgentBase):
 
         return self.shared_context.artifacts.get("pending_user_input")
 
-    async def execute(self, task: str) -> List[AgentResult]:
+    async def execute(self, task: str) -> List[MultiAgentResult]:
         """Execute swarm task using tool-based coordination with comprehensive safety mechanisms."""
-        # Initialize swarm state with safety configuration
         initial_agent = self._select_initial_agent(task)
         self.swarm_state = SwarmState(
             current_agent=initial_agent,
@@ -587,7 +574,7 @@ class Swarm(MultiAgentBase):
             max_handoffs=self.swarm_config.max_handoffs,
             max_iterations=self.swarm_config.max_iterations,
             swarm_ref=self,
-            completion_status=SwarmStatus.ACTIVE,  # Set to ACTIVE when execution starts
+            completion_status=SwarmStatus.ACTIVE,
         )
         self.shared_context.set_task(task)
 
@@ -602,7 +589,7 @@ class Swarm(MultiAgentBase):
         # Delegate to the shared execution logic
         return await self._continue_execution()
 
-    async def resume_from_user_input(self, user_response: str) -> List[AgentResult]:
+    async def resume_from_user_input(self, user_response: str) -> List[MultiAgentResult]:
         """Resume swarm execution after user provides input."""
         if self.swarm_state.completion_status != SwarmStatus.WAITING_FOR_USER:
             raise ValueError("Swarm is not waiting for user input")
