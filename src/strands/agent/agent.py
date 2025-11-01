@@ -64,6 +64,7 @@ from ..types.exceptions import ContextWindowOverflowException
 from ..types.tools import ToolResult, ToolUse
 from ..types.traces import AttributeValue
 from .agent_result import AgentResult
+from .base import AgentBase
 from .conversation_manager import (
     ConversationManager,
     SlidingWindowConversationManager,
@@ -88,8 +89,8 @@ _DEFAULT_AGENT_NAME = "Strands Agents"
 _DEFAULT_AGENT_ID = "default"
 
 
-class Agent:
-    """Core Agent interface.
+class Agent(AgentBase):
+    """Core Agent implementation.
 
     An agent orchestrates the following workflow:
 
@@ -290,8 +291,8 @@ class Agent:
         # initializing self._system_prompt for backwards compatibility
         self._system_prompt, self._system_prompt_content = self._initialize_system_prompt(system_prompt)
         self._default_structured_output_model = structured_output_model
-        self.agent_id = _identifier.validate(agent_id or _DEFAULT_AGENT_ID, _identifier.Identifier.AGENT)
-        self.name = name or _DEFAULT_AGENT_NAME
+        self._agent_id = _identifier.validate(agent_id or _DEFAULT_AGENT_ID, _identifier.Identifier.AGENT)
+        self._name = name or _DEFAULT_AGENT_NAME
         self.description = description
 
         # If not provided, create a new PrintingCallbackHandler instance
@@ -339,13 +340,13 @@ class Agent:
         # Initialize agent state management
         if state is not None:
             if isinstance(state, dict):
-                self.state = AgentState(state)
+                self._state = AgentState(state)
             elif isinstance(state, AgentState):
-                self.state = state
+                self._state = state
             else:
                 raise ValueError("state must be an AgentState object or a dict")
         else:
-            self.state = AgentState()
+            self._state = AgentState()
 
         self.tool_caller = Agent.ToolCaller(self)
 
@@ -418,6 +419,60 @@ class Agent:
         """
         all_tools = self.tool_registry.get_all_tools_config()
         return list(all_tools.keys())
+
+    @property
+    def agent_id(self) -> str:
+        """Unique identifier for the agent.
+
+        Returns:
+            Unique string identifier for this agent instance.
+        """
+        return self._agent_id
+
+    @agent_id.setter
+    def agent_id(self, value: str) -> None:
+        """Set the agent identifier.
+
+        Args:
+            value: New agent identifier.
+        """
+        self._agent_id = value
+
+    @property
+    def name(self) -> str:
+        """Human-readable name of the agent.
+
+        Returns:
+            Display name for the agent.
+        """
+        return self._name
+
+    @name.setter
+    def name(self, value: str) -> None:
+        """Set the agent name.
+
+        Args:
+            value: New agent name.
+        """
+        self._name = value
+
+    @property
+    def state(self) -> AgentState:
+        """Current state of the agent.
+
+        Returns:
+            AgentState object containing stateful information.
+        """
+        return self._state
+
+    @state.setter
+    def state(self, value: AgentState) -> None:
+        """Set the agent state.
+
+        Args:
+            value: New agent state.
+        """
+        self._state = value
 
     def __call__(
         self,

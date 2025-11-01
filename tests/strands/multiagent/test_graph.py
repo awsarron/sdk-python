@@ -18,9 +18,11 @@ def create_mock_agent(name, response_text="Default response", metrics=None, agen
     """Create a mock Agent with specified properties."""
     agent = Mock(spec=Agent)
     agent.name = name
+    agent.agent_id = agent_id or f"{name}_id"
     agent.id = agent_id or f"{name}_id"
     agent._session_manager = None
     agent.hooks = HookRegistry()
+    agent.state = AgentState()
 
     if metrics is None:
         metrics = Mock(
@@ -281,12 +283,14 @@ async def test_graph_execution_with_failures(mock_strands_tracer, mock_use_span)
     """Test graph execution error handling and failure propagation."""
     failing_agent = Mock(spec=Agent)
     failing_agent.name = "failing_agent"
+    failing_agent.agent_id = "fail_node"
     failing_agent.id = "fail_node"
     failing_agent.__call__ = Mock(side_effect=Exception("Simulated failure"))
 
     # Add required attributes for validation
     failing_agent._session_manager = None
     failing_agent.hooks = HookRegistry()
+    failing_agent.state = AgentState()
 
     async def mock_invoke_failure(*args, **kwargs):
         raise Exception("Simulated failure")
@@ -1525,9 +1529,11 @@ async def test_graph_streaming_with_failures(mock_strands_tracer, mock_use_span)
     # Create a failing agent
     failing_agent = Mock(spec=Agent)
     failing_agent.name = "failing_agent"
+    failing_agent.agent_id = "fail_node"
     failing_agent.id = "fail_node"
     failing_agent._session_manager = None
     failing_agent.hooks = HookRegistry()
+    failing_agent.state = AgentState()
 
     async def failing_stream(*args, **kwargs):
         yield {"agent_start": True}
@@ -1698,9 +1704,11 @@ async def test_graph_parallel_with_failures(mock_strands_tracer, mock_use_span):
     # Create a failing agent
     failing_agent = Mock(spec=Agent)
     failing_agent.name = "failing_agent"
+    failing_agent.agent_id = "fail_node"
     failing_agent.id = "fail_node"
     failing_agent._session_manager = None
     failing_agent.hooks = HookRegistry()
+    failing_agent.state = AgentState()
 
     async def mock_invoke_failure(*args, **kwargs):
         await asyncio.sleep(0.05)  # Small delay
