@@ -24,7 +24,7 @@ from typing import Any, AsyncIterator, Callable, Optional, Tuple, cast
 from opentelemetry import trace as trace_api
 
 from .._async import run_async
-from ..agent import Agent
+from ..agent import Agent, AgentBase
 from ..agent.state import AgentState
 from ..experimental.hooks.multiagent import (
     AfterMultiAgentInvocationEvent,
@@ -154,7 +154,7 @@ class GraphNode:
     """
 
     node_id: str
-    executor: Agent | MultiAgentBase
+    executor: AgentBase | MultiAgentBase
     dependencies: set["GraphNode"] = field(default_factory=set)
     execution_status: Status = Status.PENDING
     result: NodeResult | None = None
@@ -199,7 +199,7 @@ class GraphNode:
 
 
 def _validate_node_executor(
-    executor: Agent | MultiAgentBase, existing_nodes: dict[str, GraphNode] | None = None
+    executor: AgentBase | MultiAgentBase, existing_nodes: dict[str, GraphNode] | None = None
 ) -> None:
     """Validate a node executor for graph compatibility.
 
@@ -238,8 +238,8 @@ class GraphBuilder:
         self._session_manager: Optional[SessionManager] = None
         self._hooks: Optional[list[HookProvider]] = None
 
-    def add_node(self, executor: Agent | MultiAgentBase, node_id: str | None = None) -> GraphNode:
-        """Add an Agent or MultiAgentBase instance as a node to the graph."""
+    def add_node(self, executor: AgentBase | MultiAgentBase, node_id: str | None = None) -> GraphNode:
+        """Add an AgentBase or MultiAgentBase instance as a node to the graph."""
         _validate_node_executor(executor, self.nodes)
 
         # Auto-generate node_id if not provided

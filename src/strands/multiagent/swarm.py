@@ -23,7 +23,7 @@ from typing import Any, AsyncIterator, Callable, Optional, Tuple, cast
 from opentelemetry import trace as trace_api
 
 from .._async import run_async
-from ..agent import Agent
+from ..agent import Agent, AgentBase
 from ..agent.state import AgentState
 from ..experimental.hooks.multiagent import (
     AfterMultiAgentInvocationEvent,
@@ -57,7 +57,7 @@ class SwarmNode:
     """Represents a node (e.g. Agent) in the swarm."""
 
     node_id: str
-    executor: Agent
+    executor: AgentBase
     _initial_messages: Messages = field(default_factory=list, init=False)
     _initial_state: AgentState = field(default_factory=AgentState, init=False)
 
@@ -212,9 +212,9 @@ class Swarm(MultiAgentBase):
 
     def __init__(
         self,
-        nodes: list[Agent],
+        nodes: list[AgentBase],
         *,
-        entry_point: Agent | None = None,
+        entry_point: AgentBase | None = None,
         max_handoffs: int = 20,
         max_iterations: int = 20,
         execution_timeout: float = 900.0,
@@ -229,8 +229,8 @@ class Swarm(MultiAgentBase):
 
         Args:
             id : Unique swarm id (default: None)
-            nodes: List of nodes (e.g. Agent) to include in the swarm
-            entry_point: Agent to start with. If None, uses the first agent (default: None)
+            nodes: List of nodes (e.g. AgentBase) to include in the swarm
+            entry_point: AgentBase to start with. If None, uses the first agent (default: None)
             max_handoffs: Maximum handoffs to agents and users (default: 20)
             max_iterations: Maximum node executions within the swarm (default: 20)
             execution_timeout: Total execution timeout in seconds (default: 900.0)
@@ -425,7 +425,7 @@ class Swarm(MultiAgentBase):
                 except asyncio.TimeoutError as err:
                     raise Exception(timeout_message) from err
 
-    def _setup_swarm(self, nodes: list[Agent]) -> None:
+    def _setup_swarm(self, nodes: list[AgentBase]) -> None:
         """Initialize swarm configuration."""
         # Validate nodes before setup
         self._validate_swarm(nodes)
@@ -467,7 +467,7 @@ class Swarm(MultiAgentBase):
             first_node = next(iter(self.nodes.keys()))
             logger.debug("entry_point=<%s> | using first node as entry point", first_node)
 
-    def _validate_swarm(self, nodes: list[Agent]) -> None:
+    def _validate_swarm(self, nodes: list[AgentBase]) -> None:
         """Validate swarm structure and nodes."""
         # Check for duplicate object instances
         seen_instances = set()
