@@ -7,7 +7,6 @@ from typing import Any, AsyncIterator, Protocol, runtime_checkable
 
 from ..types.agent import AgentInput
 from .agent_result import AgentResult
-from .state import AgentState
 
 
 @runtime_checkable
@@ -17,15 +16,6 @@ class AgentBase(Protocol):
     This protocol defines the minimal contract that all agent implementations
     must satisfy.
     """
-
-    agent_id: str
-    """Unique identifier for the agent."""
-
-    name: str
-    """Human-readable name of the agent."""
-
-    state: AgentState
-    """Current state of the agent."""
 
     async def invoke_async(
         self,

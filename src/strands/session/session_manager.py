@@ -14,7 +14,7 @@ from ..hooks.registry import HookProvider, HookRegistry
 from ..types.content import Message
 
 if TYPE_CHECKING:
-    from ..agent.base import AgentBase
+    from ..agent.agent import Agent
     from ..multiagent.base import MultiAgentBase
 
 logger = logging.getLogger(__name__)
@@ -48,40 +48,40 @@ class SessionManager(HookProvider, ABC):
         registry.add_callback(AfterMultiAgentInvocationEvent, lambda event: self.sync_multi_agent(event.source))
 
     @abstractmethod
-    def redact_latest_message(self, redact_message: Message, agent: "AgentBase", **kwargs: Any) -> None:
+    def redact_latest_message(self, redact_message: Message, agent: "Agent", **kwargs: Any) -> None:
         """Redact the message most recently appended to the agent in the session.
 
         Args:
             redact_message: New message to use that contains the redact content
-            agent: AgentBase to apply the message redaction to
+            agent: Agent to apply the message redaction to
             **kwargs: Additional keyword arguments for future extensibility.
         """
 
     @abstractmethod
-    def append_message(self, message: Message, agent: "AgentBase", **kwargs: Any) -> None:
+    def append_message(self, message: Message, agent: "Agent", **kwargs: Any) -> None:
         """Append a message to the agent's session.
 
         Args:
             message: Message to add to the agent in the session
-            agent: AgentBase to append the message to
+            agent: Agent to append the message to
             **kwargs: Additional keyword arguments for future extensibility.
         """
 
     @abstractmethod
-    def sync_agent(self, agent: "AgentBase", **kwargs: Any) -> None:
+    def sync_agent(self, agent: "Agent", **kwargs: Any) -> None:
         """Serialize and sync the agent with the session storage.
 
         Args:
-            agent: AgentBase who should be synchronized with the session storage
+            agent: Agent who should be synchronized with the session storage
             **kwargs: Additional keyword arguments for future extensibility.
         """
 
     @abstractmethod
-    def initialize(self, agent: "AgentBase", **kwargs: Any) -> None:
+    def initialize(self, agent: "Agent", **kwargs: Any) -> None:
         """Initialize an agent with a session.
 
         Args:
-            agent: AgentBase to initialize
+            agent: Agent to initialize
             **kwargs: Additional keyword arguments for future extensibility.
         """
 
