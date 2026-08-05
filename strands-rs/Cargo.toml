@@ -1,0 +1,35 @@
+[workspace]
+resolver = "2"
+members = ["strands", "strands-macros"]
+
+[workspace.package]
+version = "0.0.1"
+edition = "2021"
+license = "Apache-2.0"
+repository = "https://github.com/strands-agents/harness-sdk"
+homepage = "https://strandsagents.com"
+description = "Rust SDK for the Strands Agents framework"
+keywords = ["ai", "agents", "llm", "bedrock", "strands"]
+categories = ["development-tools", "asynchronous", "api-bindings"]
+
+[workspace.dependencies]
+tokio = { version = "1", features = ["full"] }
+async-trait = "0.1"
+futures = "0.3"
+async-stream = "0.3"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+uuid = { version = "1", features = ["v4"] }
+base64 = "0.22"
+tracing = "0.1"
+
+# AWS SDK for the Bedrock provider
+aws-config = { version = "1", features = ["behavior-version-latest"] }
+aws-sdk-bedrockruntime = "1"
+aws-smithy-types = "1"
+
+# Proc-macro dependencies
+syn = { version = "2", features = ["full"] }
+quote = "1"
+proc-macro2 = "1"
